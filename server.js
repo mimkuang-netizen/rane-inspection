@@ -54,6 +54,17 @@ app.post('/api/records', async (req, res) => {
   res.json({ success: true, record: data });
 });
 
+// 批次新增記錄
+app.post('/api/records/batch', async (req, res) => {
+  const records = req.body.records;
+  if (!Array.isArray(records) || records.length === 0)
+    return res.status(400).json({ error: '無資料' });
+  const toInsert = records.map(r => ({ ...r, created_at: new Date().toISOString() }));
+  const { data, error } = await supabase.from('records').insert(toInsert).select();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, count: data.length });
+});
+
 // 刪除記錄
 app.delete('/api/records/:id', async (req, res) => {
   const { error } = await supabase

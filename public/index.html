@@ -289,6 +289,7 @@
       <option value="11">11月</option><option value="12">12月</option>
     </select>
     <button class="print-btn" onclick="printMonth()">🖨️ 列印</button>
+    <button class="print-btn" style="background:#2563eb;" onclick="autoFillWorkdays()">📅 補齊上班日</button>
   </div>
 
   <div class="summary-bar" id="summaryBar" style="display:none">
@@ -588,6 +589,71 @@
       </div>
     `;
     window.print();
+  }
+
+  async function autoFillWorkdays() {
+    const year = parseInt(document.getElementById('filterYear').value);
+    const month = parseInt(document.getElementById('filterMonth').value);
+    if (!year || !month) return showToast('⚠️ 請先選擇年份和月份');
+
+    const inspector = document.getElementById('inspector').value;
+    if (!inspector) return showToast('⚠️ 請先在上方選擇檢點人員');
+
+    // 取得本月已有記錄的日期
+    const existDays = new Set(currentRecords.map(r => r.day));
+
+    // 找出本月所有上班日（週一到週五）且不在未來、且未填過
+    const today = new Date();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const workdays = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month - 1, d);
+      const isFuture = date > today;
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      if (isFuture || isWeekend || existDays.has(d)) continue;
+      workdays.push(d);
+    }
+
+    if (workdays.length === 0) return showToast('✅ 本月上班日已全部填寫完畢！');
+
+    const confirm1 = confirm(
+      `將自動新增 ${year}年${month}月 共 ${workdays.length} 個上班日的檢點記錄\n` +
+      `（${workdays.join('、')} 日）\n\n` +
+      `檢點人員：${inspector}\n` +
+      `所有項目預設為「正常」\n\n確定要新增嗎？`
+    );
+    if (!confirm1) return;
+
+    const records = workdays.map(d => {
+      const date = new Date(year, month - 1, d);
+      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      return {
+        date: dateStr,
+        year, month, day: d,
+        inspector,
+        craneId: '天車',
+        items: ITEMS.map(text => ({ text, status: 'ok', remark: '' }))
+      };
+    });
+
+    try {
+      showToast('⏳ 新增中...');
+      const res = await fetch('/api/records/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ 已新增 ${data.count} 筆上班日記錄！`);
+        loadHistory();
+      } else {
+        showToast('❌ 新增失敗：' + (data.error || '未知錯誤'));
+      }
+    } catch(e) {
+      showToast('❌ 新增失敗，請重試');
+    }
   }
 
   function showToast(msg) {
