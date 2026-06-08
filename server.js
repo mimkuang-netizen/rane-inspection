@@ -2,99 +2,86 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const RECORDS_FILE = path.join(DATA_DIR, 'records.json');
-const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 確保資料目錄存在
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-function readRecords() {
-  if (!fs.existsSync(RECORDS_FILE)) return [];
-  try {
-    return JSON.parse(fs.readFileSync(RECORDS_FILE, 'utf8'));
-  } catch {
-    return [];
-  }
-}
-
-function writeRecords(records) {
-  fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2), 'utf8');
-}
-
-function readSettings() {
-  if (!fs.existsSync(SETTINGS_FILE)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function writeSettings(settings) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
-}
-
 // 取得所有記錄
-app.get('/api/records', (req, res) => {
-  const records = readRecords();
-  records.sort((a, b) => new Date(b.createdAt || b.savedAt) - new Date(a.createdAt || a.savedAt));
-  res.json(records);
+app.get('/api/records', async (req, res) => {
+  const { data, error } = await supabase
+    .from('records')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // 取得特定月份記錄
-app.get('/api/records/:year/:month', (req, res) => {
+app.get('/api/records/:year/:month', async (req, res) => {
   const { year, month } = req.params;
-  const records = readRecords();
-  const filtered = records
-    .filter(r => r.year === Number(year) && r.month === Number(month))
-    .sort((a, b) => a.day - b.day);
-  res.json(filtered);
+  const { data, error } = await supabase
+    .from('records')
+    .select('*')
+    .eq('year', Number(year))
+    .eq('month', Number(month))
+    .order('day', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // 新增檢點記錄
-app.post('/api/records', (req, res) => {
-  const records = readRecords();
+app.post('/api/records', async (req, res) => {
   const newRecord = {
     ...req.body,
-    _id: Date.now().toString(),
-    createdAt: new Date().toISOString()
+    created_at: new Date().toISOString()
   };
-  records.push(newRecord);
-  writeRecords(records);
-  res.json({ success: true, record: newRecord });
+  const { data, error } = await supabase
+    .from('records')
+    .insert([newRecord])
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, record: data });
 });
 
 // 刪除記錄
-app.delete('/api/records/:id', (req, res) => {
-  const records = readRecords();
-  const filtered = records.filter(r => r._id !== req.params.id && r.id !== req.params.id);
-  writeRecords(filtered);
+app.delete('/api/records/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('records')
+    .delete()
+    .or(`id.eq.${req.params.id},_id.eq.${req.params.id}`);
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 // 取得人員設定
-app.get('/api/settings/personnel', (req, res) => {
-  const settings = readSettings();
-  res.json(settings.personnel || []);
+app.get('/api/settings/personnel', async (req, res) => {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'personnel')
+    .single();
+  if (error && error.code !== 'PGRST116') return res.status(500).json({ error: error.message });
+  res.json(data ? data.value : []);
 });
 
 // 儲存人員設定
-app.post('/api/settings/personnel', (req, res) => {
+app.post('/api/settings/personnel', async (req, res) => {
   const { list } = req.body;
-  const settings = readSettings();
-  settings.personnel = list;
-  writeSettings(settings);
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key: 'personnel', value: list }, { onConflict: 'key' });
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
