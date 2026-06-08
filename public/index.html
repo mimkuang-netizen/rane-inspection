@@ -597,6 +597,40 @@
     window.print();
   }
 
+  // 台灣國定假日（僅列出週一到週五的放假日）
+  const TW_HOLIDAYS = {
+    // 2025年
+    '2025-01-01': '元旦',
+    '2025-01-27': '農曆除夕',
+    '2025-01-28': '春節初一',
+    '2025-01-29': '春節初二',
+    '2025-01-30': '春節初三',
+    '2025-01-31': '春節初四',
+    '2025-02-28': '和平紀念日',
+    '2025-04-03': '兒童節補假',
+    '2025-04-04': '兒童節',
+    '2025-05-01': '勞動節',
+    '2025-05-30': '端午節補假',
+    '2025-10-06': '國慶日補假',
+    '2025-10-31': '萬聖節假',
+    // 2026年
+    '2026-01-01': '元旦',
+    '2026-02-16': '農曆除夕',
+    '2026-02-17': '春節初一',
+    '2026-02-18': '春節初二',
+    '2026-02-19': '春節初三',
+    '2026-02-20': '春節初四',
+    '2026-02-27': '和平紀念日補假',
+    '2026-04-03': '兒童節補假',
+    '2026-05-01': '勞動節',
+    '2026-06-19': '端午節',
+    '2026-09-25': '中秋節',
+    '2026-09-28': '教師節',
+    '2026-10-09': '國慶日補假',
+    '2026-10-26': '光復節補假',
+    '2026-12-25': '行憲紀念日',
+  };
+
   async function autoFillWorkdays() {
     const year = parseInt(document.getElementById('filterYear').value);
     const month = parseInt(document.getElementById('filterMonth').value);
@@ -617,17 +651,32 @@
       const date = new Date(year, month - 1, d);
       const isFuture = date > today;
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-      if (isFuture || isWeekend || existDays.has(d)) continue;
+      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isHoliday = !!TW_HOLIDAYS[dateStr];
+      if (isFuture || isWeekend || isHoliday || existDays.has(d)) continue;
       workdays.push(d);
     }
 
     if (workdays.length === 0) return showToast('✅ 本月上班日已全部填寫完畢！');
 
+    // 找出本月被跳過的假日
+    const skippedHolidays = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month - 1, d);
+      if (date.getDay() === 0 || date.getDay() === 6) continue;
+      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if (TW_HOLIDAYS[dateStr]) skippedHolidays.push(`${d}日(${TW_HOLIDAYS[dateStr]})`);
+    }
+
+    const holidayNote = skippedHolidays.length > 0
+      ? `\n\n🏖️ 跳過國定假日：${skippedHolidays.join('、')}`
+      : '';
+
     const confirm1 = confirm(
       `將自動新增 ${year}年${month}月 共 ${workdays.length} 個上班日的檢點記錄\n` +
       `（${workdays.join('、')} 日）\n\n` +
       `檢點人員：${inspector}\n` +
-      `所有項目預設為「正常」\n\n確定要新增嗎？`
+      `所有項目預設為「正常」${holidayNote}\n\n確定要新增嗎？`
     );
     if (!confirm1) return;
 
