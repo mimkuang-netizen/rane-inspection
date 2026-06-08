@@ -289,6 +289,9 @@
       <option value="11">11月</option><option value="12">12月</option>
     </select>
     <button class="print-btn" onclick="printMonth()">🖨️ 列印</button>
+    <select id="batchInspector" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;color:#333;background:#fafafa;">
+      <option value="">── 選擇人員 ──</option>
+    </select>
     <button class="print-btn" style="background:#2563eb;" onclick="autoFillWorkdays()">📅 補齊上班日</button>
   </div>
 
@@ -366,14 +369,17 @@
   }
 
   function renderPersonnelDropdown() {
-    const sel = document.getElementById('inspector');
-    const current = sel.value;
-    sel.innerHTML = '<option value="">── 請選擇 ──</option>';
-    personnelList.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name; opt.textContent = name;
-      if (name === current) opt.selected = true;
-      sel.appendChild(opt);
+    ['inspector', 'batchInspector'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = `<option value="">${id === 'batchInspector' ? '── 選擇人員 ──' : '── 請選擇 ──'}</option>`;
+      personnelList.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        if (name === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
     });
   }
 
@@ -596,8 +602,8 @@
     const month = parseInt(document.getElementById('filterMonth').value);
     if (!year || !month) return showToast('⚠️ 請先選擇年份和月份');
 
-    const inspector = document.getElementById('inspector').value;
-    if (!inspector) return showToast('⚠️ 請先在上方選擇檢點人員');
+    const inspector = document.getElementById('batchInspector').value;
+    if (!inspector) return showToast('⚠️ 請先選擇檢點人員');
 
     // 取得本月已有記錄的日期
     const existDays = new Set(currentRecords.map(r => r.day));
