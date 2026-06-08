@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>天車每日檢點表</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, 'Noto Sans TC', sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, #1a6b3a, #2d9657);
+      color: white; padding: 18px 16px 14px; text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+    .header p { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+
+    .tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; }
+    .tab {
+      flex: 1; padding: 12px; text-align: center; font-size: 13px;
+      cursor: pointer; color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
+    }
+    .tab.active { color: #1a6b3a; border-bottom-color: #1a6b3a; font-weight: 700; }
+
+    .tab-content { display: none; padding: 16px; }
+    .tab-content.active { display: block; }
+
+    .form-card {
+      background: white; border-radius: 12px; padding: 16px;
+      margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .form-card h3 { font-size: 14px; color: #333; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+    .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .form-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    label { font-size: 12px; color: #666; font-weight: 600; }
+
+    input[type="date"], input[type="text"], select {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 14px; color: #333; background: #fafafa; transition: border-color 0.2s;
+    }
+    input:focus, select:focus { outline: none; border-color: #1a6b3a; background: white; }
+
+    .check-items {
+      background: white; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px;
+    }
+    .check-header { background: #1a6b3a; color: white; padding: 10px 16px; font-size: 13px; font-weight: 600; }
+    .check-item {
+      display: flex; align-items: center; padding: 14px 16px;
+      border-bottom: 1px solid #f0f0f0; gap: 12px; transition: background 0.15s;
+    }
+    .check-item:last-child { border-bottom: none; }
+    .check-item:active { background: #f5f9f6; }
+    .item-num {
+      width: 24px; height: 24px; background: #e8f5ec; color: #1a6b3a;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .item-text { flex: 1; font-size: 14px; color: #333; line-height: 1.4; }
+    .item-buttons { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-check {
+      width: 40px; height: 36px; border: 2px solid #ddd; border-radius: 8px;
+      font-size: 16px; cursor: pointer; background: white; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-check.ok.selected { background: #1a6b3a; border-color: #1a6b3a; }
+    .btn-check.ng.selected { background: #e53935; border-color: #e53935; }
+    .btn-check.ok.selected::after { content: '✓'; color: white; font-weight: 700; }
+    .btn-check.ng.selected::after { content: '✗'; color: white; font-weight: 700; }
+    .btn-check.ok:not(.selected)::after { content: '✓'; color: #bbb; }
+    .btn-check.ng:not(.selected)::after { content: '✗'; color: #bbb; }
+
+    .remark-input {
+      margin-top: 6px; width: 100%; padding: 6px 10px;
+      border: 1.5px solid #eee; border-radius: 6px; font-size: 12px; color: #555; display: none;
+    }
+    .remark-input.show { display: block; }
+
+    .submit-btn {
+      width: 100%; padding: 14px; background: linear-gradient(135deg, #1a6b3a, #2d9657);
+      color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+      cursor: pointer; letter-spacing: 1px; box-shadow: 0 3px 10px rgba(26,107,58,0.3); transition: opacity 0.2s;
+    }
+    .submit-btn:active { opacity: 0.85; }
+
+    .month-selector { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+    .month-selector select { flex: 1; }
+    .print-btn {
+      padding: 10px 16px; background: #1a6b3a; color: white; border: none;
+      border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+
+    .record-card {
+      background: white; border-radius: 12px; padding: 14px;
+      margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .record-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #eee;
+    }
+    .record-date { font-size: 15px; font-weight: 700; color: #1a6b3a; }
+    .record-inspector { font-size: 12px; color: #888; }
+    .record-items { display: flex; flex-direction: column; gap: 5px; }
+    .record-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444; }
+    .status-badge {
+      width: 24px; height: 24px; border-radius: 6px; display: flex;
+      align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .status-ok { background: #e8f5ec; color: #1a6b3a; }
+    .status-ng { background: #fdecea; color: #e53935; }
+    .status-none { background: #f5f5f5; color: #999; }
+    .delete-btn {
+      margin-top: 10px; padding: 6px 14px; background: #fdecea;
+      color: #e53935; border: none; border-radius: 6px; font-size: 12px; cursor: pointer;
+    }
+    .empty-state { text-align: center; padding: 40px 20px; color: #aaa; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    .toast {
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%) translateY(20px); background: #1a6b3a; color: white;
+      padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 600;
+      opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .summary-bar { display: flex; gap: 10px; margin-bottom: 14px; }
+    .summary-item {
+      flex: 1; background: white; border-radius: 10px; padding: 12px;
+      text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .summary-num { font-size: 22px; font-weight: 700; color: #1a6b3a; }
+    .summary-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+    /* 設定頁面 */
+    .settings-card {
+      background: white; border-radius: 12px; padding: 16px;
+      margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .settings-card h3 {
+      font-size: 15px; font-weight: 700; color: #1a6b3a;
+      margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e8f5ec;
+    }
+    .personnel-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .personnel-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f8f9fa; border-radius: 8px; padding: 10px 14px;
+    }
+    .personnel-name { font-size: 15px; color: #333; }
+    .remove-btn {
+      width: 28px; height: 28px; background: #fdecea; color: #e53935;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .add-row { display: flex; gap: 8px; }
+    .add-row input { flex: 1; }
+    .add-btn {
+      padding: 10px 16px; background: #1a6b3a; color: white; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .save-settings-btn {
+      width: 100%; padding: 13px; background: linear-gradient(135deg, #1a6b3a, #2d9657);
+      color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-top: 4px;
+    }
+
+    /* 列印 */
+    @media print {
+      body > *:not(#printArea) { display: none !important; }
+      #printArea { display: block !important; margin: 0; padding: 10mm; }
+      .print-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+      .print-table th, .print-table td { border: 1px solid #333; padding: 4px 6px; text-align: center; vertical-align: middle; }
+      .print-table th { background: #eee; font-weight: bold; }
+      .print-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 6px; }
+      .print-subtitle { text-align: center; font-size: 11px; margin-bottom: 10px; color: #555; }
+      .cell-ok { color: #1a6b3a; font-weight: bold; }
+      .cell-ng { color: #e53935; font-weight: bold; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏗️ 固定式起重機檢點表</h1>
+  <p>冠毅國際有限公司</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('form', this)">📝 今日檢點</div>
+  <div class="tab" onclick="switchTab('history', this)">📋 歷史記錄</div>
+  <div class="tab" onclick="switchTab('settings', this)">⚙️ 管理設定</div>
+</div>
+
+<!-- 填寫表單 -->
+<div id="tab-form" class="tab-content active">
+  <div class="form-card">
+    <h3>📅 基本資料</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>檢點日期</label>
+        <input type="date" id="checkDate">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>檢點人員</label>
+        <select id="inspector">
+          <option value="">── 請選擇 ──</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="check-items">
+    <div class="check-header">🔍 檢點項目（✓正常 / ✗異常）</div>
+    <div class="check-item">
+      <div class="item-num">1</div>
+      <div style="flex:1">
+        <div class="item-text">過捲預防裝置是否正常</div>
+        <input class="remark-input" id="remark-0" placeholder="異常說明...">
+      </div>
+      <div class="item-buttons">
+        <button class="btn-check ok" id="ok-0" onclick="setCheck(0,'ok')"></button>
+        <button class="btn-check ng" id="ng-0" onclick="setCheck(0,'ng')"></button>
+      </div>
+    </div>
+    <div class="check-item">
+      <div class="item-num">2</div>
+      <div style="flex:1">
+        <div class="item-text">煞車器、離合器是否正常</div>
+        <input class="remark-input" id="remark-1" placeholder="異常說明...">
+      </div>
+      <div class="item-buttons">
+        <button class="btn-check ok" id="ok-1" onclick="setCheck(1,'ok')"></button>
+        <button class="btn-check ng" id="ng-1" onclick="setCheck(1,'ng')"></button>
+      </div>
+    </div>
+    <div class="check-item">
+      <div class="item-num">3</div>
+      <div style="flex:1">
+        <div class="item-text">控制裝置之性能是否正常</div>
+        <input class="remark-input" id="remark-2" placeholder="異常說明...">
+      </div>
+      <div class="item-buttons">
+        <button class="btn-check ok" id="ok-2" onclick="setCheck(2,'ok')"></button>
+        <button class="btn-check ng" id="ng-2" onclick="setCheck(2,'ng')"></button>
+      </div>
+    </div>
+    <div class="check-item">
+      <div class="item-num">4</div>
+      <div style="flex:1">
+        <div class="item-text">架軌上及吊運車橫行之導軌是否正常</div>
+        <input class="remark-input" id="remark-3" placeholder="異常說明...">
+      </div>
+      <div class="item-buttons">
+        <button class="btn-check ok" id="ok-3" onclick="setCheck(3,'ok')"></button>
+        <button class="btn-check ng" id="ng-3" onclick="setCheck(3,'ng')"></button>
+      </div>
+    </div>
+    <div class="check-item">
+      <div class="item-num">5</div>
+      <div style="flex:1">
+        <div class="item-text">鋼纜運行狀況是否正常</div>
+        <input class="remark-input" id="remark-4" placeholder="異常說明...">
+      </div>
+      <div class="item-buttons">
+        <button class="btn-check ok" id="ok-4" onclick="setCheck(4,'ok')"></button>
+        <button class="btn-check ng" id="ng-4" onclick="setCheck(4,'ng')"></button>
+      </div>
+    </div>
+  </div>
+
+  <button class="submit-btn" onclick="submitForm()">✅ 送出檢點記錄</button>
+</div>
+
+<!-- 歷史記錄 -->
+<div id="tab-history" class="tab-content">
+  <div class="month-selector">
+    <select id="filterYear" onchange="loadHistory()"></select>
+    <select id="filterMonth" onchange="loadHistory()">
+      <option value="">全部月份</option>
+      <option value="1">1月</option><option value="2">2月</option>
+      <option value="3">3月</option><option value="4">4月</option>
+      <option value="5">5月</option><option value="6">6月</option>
+      <option value="7">7月</option><option value="8">8月</option>
+      <option value="9">9月</option><option value="10">10月</option>
+      <option value="11">11月</option><option value="12">12月</option>
+    </select>
+    <button class="print-btn" onclick="printMonth()">🖨️ 列印</button>
+  </div>
+
+  <div class="summary-bar" id="summaryBar" style="display:none">
+    <div class="summary-item">
+      <div class="summary-num" id="totalCount">0</div>
+      <div class="summary-label">總筆數</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-num" style="color:#1a6b3a" id="okCount">0</div>
+      <div class="summary-label">全部正常</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-num" style="color:#e53935" id="ngCount">0</div>
+      <div class="summary-label">有異常</div>
+    </div>
+  </div>
+
+  <div id="historyList"></div>
+</div>
+
+<!-- 管理設定 -->
+<div id="tab-settings" class="tab-content">
+  <div class="settings-card">
+    <h3>👷 檢點人員名單管理</h3>
+    <div class="personnel-list" id="personnelList"></div>
+    <div class="add-row">
+      <input type="text" id="newPersonnel" placeholder="輸入人員姓名" maxlength="20">
+      <button class="add-btn" onclick="addPersonnel()">＋ 新增</button>
+    </div>
+  </div>
+  <button class="save-settings-btn" onclick="savePersonnel()">💾 儲存人員設定</button>
+</div>
+
+<div id="printArea" style="display:none"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+  const ITEMS = [
+    '過捲預防裝置是否正常',
+    '煞車器、離合器是否正常',
+    '控制裝置之性能是否正常',
+    '架軌上及吊運車橫行之導軌是否正常',
+    '鋼纜運行狀況是否正常'
+  ];
+
+  const checkState = [null, null, null, null, null];
+  let currentRecords = [];
+  let personnelList = [];
+
+  window.onload = async () => {
+    const today = new Date();
+    document.getElementById('checkDate').value = today.toISOString().split('T')[0];
+
+    const yearSel = document.getElementById('filterYear');
+    for (let y = today.getFullYear(); y >= today.getFullYear() - 2; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y + '年';
+      if (y === today.getFullYear()) opt.selected = true;
+      yearSel.appendChild(opt);
+    }
+    document.getElementById('filterMonth').value = today.getMonth() + 1;
+
+    await loadPersonnel();
+    loadHistory();
+  };
+
+  async function loadPersonnel() {
+    try {
+      const res = await fetch('/api/settings/personnel');
+      personnelList = await res.json();
+      renderPersonnelDropdown();
+      renderPersonnelSettings();
+    } catch(e) { console.error(e); }
+  }
+
+  function renderPersonnelDropdown() {
+    const sel = document.getElementById('inspector');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">── 請選擇 ──</option>';
+    personnelList.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      if (name === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderPersonnelSettings() {
+    const list = document.getElementById('personnelList');
+    if (personnelList.length === 0) {
+      list.innerHTML = '<div style="color:#aaa;font-size:13px;text-align:center;padding:12px;">尚未新增人員</div>';
+      return;
+    }
+    list.innerHTML = personnelList.map((name, i) => `
+      <div class="personnel-item">
+        <span class="personnel-name">👷 ${name}</span>
+        <button class="remove-btn" onclick="removePersonnel(${i})">×</button>
+      </div>
+    `).join('');
+  }
+
+  function addPersonnel() {
+    const input = document.getElementById('newPersonnel');
+    const name = input.value.trim();
+    if (!name) return showToast('⚠️ 請輸入姓名');
+    if (personnelList.includes(name)) return showToast('⚠️ 此姓名已存在');
+    personnelList.push(name);
+    input.value = '';
+    renderPersonnelSettings();
+    renderPersonnelDropdown();
+  }
+
+  function removePersonnel(idx) {
+    personnelList.splice(idx, 1);
+    renderPersonnelSettings();
+    renderPersonnelDropdown();
+  }
+
+  async function savePersonnel() {
+    try {
+      await fetch('/api/settings/personnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ list: personnelList })
+      });
+      showToast('✅ 人員設定已儲存');
+    } catch(e) { showToast('❌ 儲存失敗'); }
+  }
+
+  function switchTab(tab, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    el.classList.add('active');
+    if (tab === 'history') loadHistory();
+  }
+
+  function setCheck(idx, val) {
+    checkState[idx] = val;
+    document.getElementById('ok-' + idx).classList.remove('selected');
+    document.getElementById('ng-' + idx).classList.remove('selected');
+    document.getElementById(val + '-' + idx).classList.add('selected');
+    const remark = document.getElementById('remark-' + idx);
+    if (val === 'ng') remark.classList.add('show');
+    else { remark.classList.remove('show'); remark.value = ''; }
+  }
+
+  async function submitForm() {
+    const date = document.getElementById('checkDate').value;
+    const inspector = document.getElementById('inspector').value;
+    if (!date) return showToast('⚠️ 請選擇檢點日期');
+    if (!inspector) return showToast('⚠️ 請選擇檢點人員');
+    const unchecked = checkState.filter(s => s === null).length;
+    if (unchecked > 0) return showToast(`⚠️ 還有 ${unchecked} 項尚未勾選`);
+
+    const d = new Date(date);
+    const items = ITEMS.map((text, i) => ({
+      text, status: checkState[i],
+      remark: document.getElementById('remark-' + i).value.trim()
+    }));
+
+    const record = {
+      date, year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(),
+      inspector, craneId: '天車', items
+    };
+
+    try {
+      const res = await fetch('/api/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+      if (res.ok) { showToast('✅ 檢點記錄已送出！'); resetForm(); }
+    } catch(e) { showToast('❌ 送出失敗，請重試'); }
+  }
+
+  function resetForm() {
+    for (let i = 0; i < 5; i++) {
+      checkState[i] = null;
+      document.getElementById('ok-' + i).classList.remove('selected');
+      document.getElementById('ng-' + i).classList.remove('selected');
+      document.getElementById('remark-' + i).classList.remove('show');
+      document.getElementById('remark-' + i).value = '';
+    }
+    document.getElementById('inspector').value = '';
+  }
+
+  async function loadHistory() {
+    const year = document.getElementById('filterYear').value;
+    const month = document.getElementById('filterMonth').value;
+    let url = '/api/records';
+    if (year && month) url = `/api/records/${year}/${month}`;
+
+    try {
+      const res = await fetch(url);
+      const records = await res.json();
+      currentRecords = records;
+      records.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const hasNG = r => r.items.some(i => i.status === 'ng');
+      const totalCount = records.length;
+      const ngCount = records.filter(hasNG).length;
+      const okCount = totalCount - ngCount;
+
+      if (totalCount > 0) {
+        document.getElementById('summaryBar').style.display = 'flex';
+        document.getElementById('totalCount').textContent = totalCount;
+        document.getElementById('okCount').textContent = okCount;
+        document.getElementById('ngCount').textContent = ngCount;
+      } else {
+        document.getElementById('summaryBar').style.display = 'none';
+      }
+
+      const list = document.getElementById('historyList');
+      if (records.length === 0) {
+        list.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無檢點記錄</p></div>`;
+        return;
+      }
+
+      list.innerHTML = records.map(r => `
+        <div class="record-card">
+          <div class="record-header">
+            <div>
+              <div class="record-date">${r.date}</div>
+              <div class="record-inspector">👷 ${r.inspector}</div>
+            </div>
+            <div style="font-size:20px">${r.items.every(i=>i.status==='ok') ? '✅' : '⚠️'}</div>
+          </div>
+          <div class="record-items">
+            ${r.items.map((item, idx) => `
+              <div class="record-item">
+                <div class="status-badge ${item.status==='ok'?'status-ok':item.status==='ng'?'status-ng':'status-none'}">
+                  ${item.status==='ok'?'✓':item.status==='ng'?'✗':'-'}
+                </div>
+                <div>
+                  <div>${idx+1}. ${item.text}</div>
+                  ${item.remark?`<div style="font-size:11px;color:#e53935;margin-top:2px">⚠️ ${item.remark}</div>`:''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="delete-btn" onclick="deleteRecord('${r._id}')">🗑️ 刪除</button>
+        </div>
+      `).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  async function deleteRecord(id) {
+    if (!confirm('確定要刪除此筆記錄？')) return;
+    await fetch('/api/records/' + id, { method: 'DELETE' });
+    loadHistory();
+    showToast('已刪除記錄');
+  }
+
+  function printMonth() {
+    const year = document.getElementById('filterYear').value;
+    const month = document.getElementById('filterMonth').value;
+    if (!month) return showToast('⚠️ 請先選擇月份再列印');
+    if (currentRecords.length === 0) return showToast('⚠️ 沒有記錄可列印');
+
+    const sorted = [...currentRecords].sort((a, b) => a.day - b.day);
+
+    const tableRows = sorted.map(r => {
+      const cells = r.items.map(item => {
+        if (item.status === 'ok') return `<td class="cell-ok">○</td>`;
+        if (item.status === 'ng') return `<td class="cell-ng">✗${item.remark?'<br><small>'+item.remark+'</small>':''}</td>`;
+        return `<td>-</td>`;
+      }).join('');
+      return `<tr>
+        <td>${r.day}日</td>
+        <td>${r.inspector}</td>
+        ${cells}
+        <td>${r.items.every(i=>i.status==='ok')?'':'⚠️'}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('printArea').innerHTML = `
+      <div class="print-title">固定式起重機每日檢點記錄表</div>
+      <div class="print-subtitle">冠毅國際有限公司　${year}年${month}月</div>
+      <table class="print-table">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>檢點人員</th>
+            <th>①過捲預防裝置</th>
+            <th>②煞車器離合器</th>
+            <th>③控制裝置性能</th>
+            <th>④導軌狀況</th>
+            <th>⑤鋼纜運行</th>
+            <th>備註</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div style="margin-top:16px;font-size:10px;color:#555;">
+        ○ 正常　✗ 異常　　主管確認簽名：＿＿＿＿＿＿　　列印日期：${new Date().toLocaleDateString('zh-TW')}
+      </div>
+    `;
+    window.print();
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>

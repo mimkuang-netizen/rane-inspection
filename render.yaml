@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: crane-inspection
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: crane-data
+      mountPath: /app/data
+      sizeGB: 1
